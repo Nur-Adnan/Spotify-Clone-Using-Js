@@ -1,7 +1,7 @@
 console.log("Let's write JavaScript");
 let currentSong = new Audio();
 let songs;
-let currFolder;
+let currUrl;
 
 function secondsToMinutesSeconds(seconds) {
   if (isNaN(seconds) || seconds < 0) {
@@ -17,10 +17,10 @@ function secondsToMinutesSeconds(seconds) {
   return `${formattedMinutes}:${formattedSeconds}`;
 }
 
-async function getSongs(folder) {
-  currFolder = folder;
+async function getSongs(url) {
+  currUrl = url;
   try {
-    let a = await fetch(`/${folder}/`);
+    let a = await fetch(url);
     let response = await a.text();
     let div = document.createElement("div");
     div.innerHTML = response;
@@ -29,7 +29,7 @@ async function getSongs(folder) {
     for (let index = 0; index < as.length; index++) {
       const element = as[index];
       if (element.href.endsWith(".mp3")) {
-        songs.push(element.href.split(`/${folder}/`)[1]);
+        songs.push(element.href.split("/").pop());
       }
     }
 
@@ -64,12 +64,12 @@ async function getSongs(folder) {
 
     return songs;
   } catch (error) {
-    console.error(`Error fetching songs from folder ${folder}:`, error);
+    console.error(`Error fetching songs from URL ${url}:`, error);
   }
 }
 
 const playMusic = (track, pause = false) => {
-  currentSong.src = `/${currFolder}/` + track;
+  currentSong.src = `${currUrl}` + track;
   if (!pause) {
     currentSong.play();
     play.src = "img/pause.svg";
@@ -80,7 +80,7 @@ const playMusic = (track, pause = false) => {
 
 async function displayAlbums() {
   console.log("displaying albums");
-  let a = await fetch(`/songs/`);
+  let a = await fetch(`http://127.0.0.1:5500/songs/`);
   let response = await a.text();
   let div = document.createElement("div");
   div.innerHTML = response;
@@ -96,24 +96,29 @@ async function displayAlbums() {
         .slice(-1)[0];
       // Get the metadata of the folder
       try {
-        let metadataFetch = await fetch(`/songs/${folder}/info.json`);
+        let metadataFetch = await fetch(
+          `http://127.0.0.1:5500/songs/${folder}/info.json`
+        );
         if (!metadataFetch.ok) {
           throw new Error(`HTTP error! status: ${metadataFetch.status}`);
         }
         let metadataResponse = await metadataFetch.json();
         cardContainer.innerHTML += `
-          <div data-folder="${folder}" class="card">
+          <div data-url="http://127.0.0.1:5500/songs/${folder}/" class="card">
             <div class="play">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M5 20V4L19 12L5 20Z" stroke="#141B34" fill="#000" stroke-width="1.5" stroke-linejoin="round" />
               </svg>
             </div>
-            <img src="/songs/${folder}/cover.jpg" alt="">
+            <img src="http://127.0.0.1:5500/songs/${folder}/cover.jpg" alt="">
             <h2>${metadataResponse.title}</h2>
             <p>${metadataResponse.description}</p>
           </div>`;
       } catch (error) {
-        console.error(`Error fetching metadata for folder ${folder}:`, error);
+        console.error(
+          `Error fetching metadata for URL http://127.0.0.1:5500/songs/${folder}/:`,
+          error
+        );
       }
     }
   }
@@ -122,7 +127,7 @@ async function displayAlbums() {
   Array.from(document.getElementsByClassName("card")).forEach((e) => {
     e.addEventListener("click", async (item) => {
       console.log("Fetching Songs");
-      songs = await getSongs(`songs/${item.currentTarget.dataset.folder}`);
+      songs = await getSongs(item.currentTarget.dataset.url);
       playMusic(songs[0]);
     });
   });
@@ -130,7 +135,7 @@ async function displayAlbums() {
 
 async function main() {
   // Get the list of all the songs
-  await getSongs("songs/ncs");
+  await getSongs("http://127.0.0.1:5500/songs/ncs/");
   playMusic(songs[0], true);
 
   // Display all the albums on the page
